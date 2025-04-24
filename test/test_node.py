@@ -9,6 +9,13 @@ class NodeTests(unittest.TestCase):
         node_c: Node = Node("Child Task")
         self.assertEqual("Parent Task", node_p.get_value())
         self.assertEqual("Child Task", node_c.get_value())
+
+        with self.assertRaises(TypeError):
+            node_e: Node = Node(5)
+        with self.assertRaises(TypeError):
+            node_e: Node = Node("e", 2025)
+        with self.assertRaises(TypeError):
+            node_e: Node = Node("e", date.today(), 1430)
         return
 
     def test_node_due_date(self):
@@ -19,6 +26,9 @@ class NodeTests(unittest.TestCase):
         day_after: date = tmr + timedelta(days=1)
         _ = node_p.set_due_date(day_after)
         self.assertEqual(day_after, node_p.get_due_date())
+
+        with self.assertRaises(TypeError):
+            node_p.set_due_date(2025)
         return
 
     def test_node_due_time(self):
@@ -30,6 +40,10 @@ class NodeTests(unittest.TestCase):
         evening: time = time(hour=19, minute=30)
         _ = node_p.set_due_time(evening)
         self.assertEqual(evening, node_p.get_due_time())
+
+        with self.assertRaises(TypeError):
+            node_p.set_due_time(17)
+
         return
         
         
