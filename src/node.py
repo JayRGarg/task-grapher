@@ -1,6 +1,10 @@
 from datetime import datetime, date, time
+from typing import Self, Iterator
+import itertools
 
 class Node:
+
+    id_iter: Iterator[int] = itertools.count()
 
     def __init__(self, value: str, due_date: date|None=None, due_time: time|None=None) -> None:
         if not isinstance(value, str):
@@ -10,18 +14,22 @@ class Node:
         if not isinstance(due_time, (time, type(None))):
             raise TypeError(f"Node time must be a time or None, not a {type(due_time)}.")
 
+        self._id: str = str(next(Node.id_iter))
         self._value: str = value
         self._created: datetime = datetime.now()
         self._due_date: date|None = due_date
         self._due_time: time|None = due_time
         self._completed: bool = False
 
-        self._children: list[Node] = []
-        self._siblings: list[Node] = []
-        self._parents: list[Node] = []
+        self._children: list[Self] = []
+        self._siblings: list[Self] = []
+        self._parents: list[Self] = []
         self._max_children: int = 4
         self._max_parents: int = 4
         #self._time
+
+    def get_id(self) -> str:
+        return self._id
 
     def get_value(self) -> str:
         return self._value
@@ -50,5 +58,16 @@ class Node:
         self._due_time = new_time
         return self._due_time
 
-    # def add_child(self, child: Node) -> Node:
-    #     if not (child in self._children) and len(self._children) 
+    def get_children(self) -> list[Self]:
+        return self._children
+
+    def get_parents(self) -> list[Self]:
+        return self._parents
+
+    def add_child(self, child: Self) -> bool:
+        if not (child in self._children) \
+                and len(self._children) < self._max_children \
+                and len(child._parents) < child._max_parents:
+            self._children.append(child)
+            child._parents.append(self)
+        return (child in self._children) and (self in child._parents)
