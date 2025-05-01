@@ -14,7 +14,7 @@ class Node:
         if not isinstance(due_time, (time, type(None))):
             raise TypeError(f"Node time must be a time or None, not a {type(due_time)}.")
 
-        self._id: str = str(next(Node.id_iter))
+        self._id: int = next(Node.id_iter)
         self._value: str = value
         self._created: datetime = datetime.now()
         self._due_date: date|None = due_date
@@ -28,7 +28,7 @@ class Node:
         self._max_parents: int = 4
         #self._time
 
-    def get_id(self) -> str:
+    def get_id(self) -> int:
         return self._id
 
     def get_value(self) -> str:
