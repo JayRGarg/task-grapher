@@ -63,6 +63,8 @@ class NodeTests(unittest.TestCase):
         node_p.add_child(node_c)
         self.assertIn(node_c, node_p.get_children())
         self.assertIn(node_p, node_c.get_parents())
+
+    #test get children and get children recursive
         
         
 if __name__ == "__main__":

@@ -19,8 +19,8 @@ class Gui:
         self._id_to_node: dict[int, Node] = {}
         self._node_positions: dict[Node, tuple[int, int, int, int]] = {} #each tuple consists of (x, y, circle_id, text_id)
         self._selected_nodes: set[Node] = set()
-        self._node_to_child_line_ids: dict[Node, set[int]]
-        self._node_to_parent_line_ids: dict[Node, set[int]]
+        self._node_to_child_line_ids: dict[Node, set[int]] = {}
+        self._node_to_parent_line_ids: dict[Node, set[int]] = {}
 
         self.add_nodes()
 
@@ -65,6 +65,17 @@ class Gui:
         x_c, y_c = x_p + dx, y_p + dy
         self.draw_node(canvas, child_node, x_c, y_c)
         line_id:int = canvas.create_line(x_p, y_p, x_c, y_c, fill="red", width=1, tags=(str(parent_node.get_id()), "line"))#, dash=(5, 2))
+
+        if parent_node in self._node_to_child_line_ids:
+            self._node_to_child_line_ids[parent_node].add(line_id)
+        else:
+            self._node_to_child_line_ids[parent_node] = {line_id}
+
+        if child_node in self._node_to_parent_line_ids:
+            self._node_to_parent_line_ids[child_node].add(line_id)
+        else:
+            self._node_to_parent_line_ids[child_node] = {line_id}
+
         canvas.tag_lower("line", "circle")
 
 
@@ -96,6 +107,11 @@ class Gui:
             logging.info("Starting drag")
             logging.debug("Selected Node value: %s", selected_node.get_value())
             self._selected_nodes.add(selected_node)
+
+            children_r = selected_node.get_children_r()
+            for child in children_r:
+                self._selected_nodes.add(child)
+            
             self._drag_start_x = event.x
             self._drag_start_y = event.y
         else:

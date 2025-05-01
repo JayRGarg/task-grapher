@@ -1,6 +1,7 @@
 from datetime import datetime, date, time
 from typing import Self, Iterator
 import itertools
+from collections import deque
 
 class Node:
 
@@ -71,3 +72,20 @@ class Node:
             self._children.append(child)
             child._parents.append(self)
         return (child in self._children) and (self in child._parents)
+
+    def get_children_r(self) -> list[Self]:
+        visited: set[Self] = set()
+        stack: deque[Self] = deque()
+        for child in self.get_children():
+            visited.add(child)
+            stack.append(child)
+
+        while stack:
+            curr: Self = stack.pop()
+            for child in curr.get_children():
+                if child is not self and child not in visited:
+                    visited.add(child)
+                    stack.append(child)
+
+        return list(visited)
+
