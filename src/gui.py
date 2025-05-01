@@ -17,10 +17,15 @@ class Gui:
         self._drag_start_x: int = 0
         self._drag_start_y: int = 0
         self._id_to_node: dict[int, Node] = {}
+
         self._node_positions: dict[Node, tuple[int, int, int, int]] = {} #each tuple consists of (x, y, circle_id, text_id)
-        self._selected_nodes: set[Node] = set()
+        self._line_positions: dict[int, tuple[int, int, int, int]] = {} #each tuple consists of (xp, yp, xc, yc)
+
         self._node_to_child_line_ids: dict[Node, set[int]] = {}
         self._node_to_parent_line_ids: dict[Node, set[int]] = {}
+
+        self._selected_nodes: set[Node] = set()
+        self._selected_child_line_ids: set[int] = set()
 
         self.add_nodes()
 
@@ -76,6 +81,11 @@ class Gui:
         else:
             self._node_to_parent_line_ids[child_node] = {line_id}
 
+        self._line_positions[line_id] = (x_p, y_p, x_c, y_c)
+
+        logging.debug("node to child line ids %s", str(self._node_to_child_line_ids))
+        logging.debug("node to parent line ids %s", str(self._node_to_parent_line_ids))
+
         canvas.tag_lower("line", "circle")
 
 
@@ -100,6 +110,17 @@ class Gui:
                             return node
         return None
 
+    def select_child_line_ids(self) -> None:
+        logging.debug("num of selected child line ids: %d", len(self._selected_child_line_ids))
+        assert len(self._selected_child_line_ids) == 0, "line ids are still selected!"
+        for node in self._selected_nodes:
+            if node in self._node_to_child_line_ids:
+                for id in self._node_to_child_line_ids[node]:
+                    if id not in self._selected_child_line_ids:
+                        self._selected_child_line_ids.add(id)
+        return 
+
+
     def start_drag(self, event: tk.Event) -> None:
         """Start the drag operation."""
         selected_node: Node|None = self.find_node_at(event.x, event.y)
@@ -107,10 +128,12 @@ class Gui:
             logging.info("Starting drag")
             logging.debug("Selected Node value: %s", selected_node.get_value())
             self._selected_nodes.add(selected_node)
-
             children_r = selected_node.get_children_r()
             for child in children_r:
                 self._selected_nodes.add(child)
+
+            self.select_child_line_ids()
+            logging.debug("selected child line ids: %s", str(self._selected_child_line_ids))
             
             self._drag_start_x = event.x
             self._drag_start_y = event.y
@@ -146,9 +169,20 @@ class Gui:
                     # Update the stored position
                     self._node_positions[selected_node] = (new_x, new_y, circle_id, text_id)
 
-                    # Update drag start position for the next drag event
-                    self._drag_start_x = event.x
-                    self._drag_start_y = event.y
+            for line_id in self._selected_child_line_ids:
+                if line_id in self._line_positions:
+                    x_p: int; y_p: int; x_c: int; y_c: int
+                    x_p, y_p, x_c, y_c = self._line_positions[line_id]
+                    x_p += dx
+                    y_p += dy
+                    x_c += dx
+                    y_c += dy
+                    self._canvas.coords(line_id, x_p, y_p, x_c, y_c)
+                    self._line_positions[line_id] = (x_p, y_p, x_c, y_c)
+
+            # Update drag start position for the next drag event
+            self._drag_start_x = event.x
+            self._drag_start_y = event.y
         else:
             logging.info("No Nodes dragging")
 
@@ -157,6 +191,7 @@ class Gui:
         if len(self._selected_nodes) > 0:
             logging.info("Stopping drag")
             self._selected_nodes.clear()
+            self._selected_child_line_ids.clear()
             self._drag_start_x = 0
             self._drag_start_y = 0
         else:
