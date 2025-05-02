@@ -1,5 +1,5 @@
-from node import Node
-from gui import Gui
+from src.node import Node
+from src.gui import Gui
 import logging
 
 def main():

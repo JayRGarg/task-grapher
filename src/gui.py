@@ -1,5 +1,5 @@
 import tkinter as tk
-from node import Node
+from src.node import Node
 from collections import deque
 import logging
 import math
@@ -102,7 +102,7 @@ class Gui:
             logging.debug(f"items: {items}")
             for item_id in items:
                 tags = self._canvas.gettags(item_id)
-                print(tags)
+                logging.debug(f"tags: {tags}")
                 for tag in tags:
                     if tag.isdigit() and int(tag) in self._id_to_node and isinstance(self._id_to_node[int(tag)], Node):
                         node = self._id_to_node[int(tag)]

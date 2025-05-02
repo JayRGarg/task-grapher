@@ -71,6 +71,8 @@ class Node:
                 and len(child._parents) < child._max_parents:
             self._children.append(child)
             child._parents.append(self)
+        if child in self._children:
+            assert (self in child._parents), "Parent missing in Child's Parent List?"
         return (child in self._children) and (self in child._parents)
 
     def get_children_r(self) -> list[Self]:
