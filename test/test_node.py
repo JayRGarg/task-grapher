@@ -11,6 +11,7 @@ class Test_Node(unittest.TestCase):
     def setUp(self):
         """Set up a Node instance for each test."""
         self.node = Node("Test Node")
+        return
 
     def test_node_creation(self):
         """Test that a node is created with the correct initial values."""
@@ -22,6 +23,7 @@ class Test_Node(unittest.TestCase):
         self.assertFalse(self.node._completed)
         self.assertEqual(self.node.get_children(), [])
         self.assertEqual(self.node.get_parents(), [])
+        return
 
     def test_node_creation_with_due_date_and_time(self):
         """Test node creation with due date and time."""
@@ -30,42 +32,50 @@ class Test_Node(unittest.TestCase):
         node = Node("Test Node", due_date=due_date, due_time=due_time)
         self.assertEqual(node.get_due_date(), due_date)
         self.assertEqual(node.get_due_time(), due_time)
+        return
 
     def test_node_creation_invalid_value_type(self):
         """Test that a TypeError is raised when the node value is not a string."""
         with self.assertRaises(TypeError):
             Node(123)  # Pass an integer instead of a string
+        return
 
     def test_node_creation_invalid_date_type(self):
         """Test that a TypeError is raised when the due date is not a date."""
         with self.assertRaises(TypeError):
             Node("Test Node", due_date="2023-10-27")
+        return
 
     def test_node_creation_invalid_time_type(self):
         """Test that a TypeError is raised when the due time is not a time."""
         with self.assertRaises(TypeError):
             Node("Test Node", due_time="12:00:00")
+        return
 
     def test_get_value(self):
         """Test that the get_value method returns the correct value."""
         self.assertEqual(self.node.get_value(), "Test Node")
+        return
 
     def test_set_value(self):
         """Test that the set_value method updates the value correctly."""
         new_value = self.node.set_value("New Value")
         self.assertEqual(self.node.get_value(), "New Value")
         self.assertEqual(new_value, "New Value")
+        return
 
     def test_set_value_invalid_type(self):
         """Test that set_value raises TypeError if the new value is not a string."""
         with self.assertRaises(TypeError):
             self.node.set_value(123)
+        return
 
     def test_get_due_date(self):
         """Test that get_due_date returns the correct due date."""
         due_date = date(2023, 11, 15)
         self.node.set_due_date(due_date)
         self.assertEqual(self.node.get_due_date(), due_date)
+        return
 
     def test_set_due_date(self):
         """Test that set_due_date updates the due date correctly."""
@@ -73,6 +83,7 @@ class Test_Node(unittest.TestCase):
         returned_date = self.node.set_due_date(new_date)
         self.assertEqual(self.node.get_due_date(), new_date)
         self.assertEqual(returned_date, new_date)
+        return
 
     def test_change_due_date(self):
         tmr: date = date.today() + timedelta(days=1)
@@ -82,17 +93,20 @@ class Test_Node(unittest.TestCase):
         day_after: date = tmr + timedelta(days=1)
         _ = node_p.set_due_date(day_after)
         self.assertEqual(day_after, node_p.get_due_date())
+        return
 
     def test_set_due_date_invalid_type(self):
         """Test that set_due_date raises TypeError if the new date is not a date."""
         with self.assertRaises(TypeError):
             self.node.set_due_date("2024-01-01")
+        return
 
     def test_get_due_time(self):
         """Test that get_due_time returns the correct due time."""
         due_time = time(10, 30)
         self.node.set_due_time(due_time)
         self.assertEqual(self.node.get_due_time(), due_time)
+        return
 
     def test_set_due_time(self):
         """Test that set_due_time updates the due time correctly."""
@@ -100,6 +114,7 @@ class Test_Node(unittest.TestCase):
         returned_time = self.node.set_due_time(new_time)
         self.assertEqual(self.node.get_due_time(), new_time)
         self.assertEqual(returned_time, new_time)
+        return
 
     def test_change_due_time(self):
         tmr: date = date.today() + timedelta(days=1)
@@ -110,19 +125,23 @@ class Test_Node(unittest.TestCase):
         evening: time = time(hour=19, minute=30)
         _ = node_p.set_due_time(evening)
         self.assertEqual(evening, node_p.get_due_time())
+        return
 
     def test_set_due_time_invalid_type(self):
         """Test that set_due_time raises TypeError if the new time is not a time."""
         with self.assertRaises(TypeError):
             self.node.set_due_time("14:45:00")
+        return
 
     def test_get_children(self):
         """Test that get_children returns an empty list initially."""
         self.assertEqual(self.node.get_children(), [])
+        return
 
     def test_get_parents(self):
         """Test that get_parents returns an empty list initially."""
         self.assertEqual(self.node.get_parents(), [])
+        return
 
     def test_add_child(self):
         """Test that add_child adds a child node correctly."""
@@ -130,6 +149,7 @@ class Test_Node(unittest.TestCase):
         self.assertTrue(self.node.add_child(child_node))
         self.assertIn(child_node, self.node.get_children())
         self.assertIn(self.node, child_node.get_parents())
+        return
 
     def test_add_child_existing_child(self):
         """Test that add_child does not add a child node if it already exists."""
@@ -138,6 +158,7 @@ class Test_Node(unittest.TestCase):
         self.assertEqual(len(self.node.get_children()), 1) # Ensure only one child
         self.assertTrue(self.node.add_child(child_node))  # Try to add the same child again, should still be true
         self.assertEqual(len(self.node.get_children()), 1) # Ensure length is still 1
+        return
 
     def test_add_child_max_children(self):
         """Test that add_child does not add more than max_children children."""
@@ -149,6 +170,7 @@ class Test_Node(unittest.TestCase):
         self.assertTrue(self.node.add_child(child2))
         self.assertFalse(self.node.add_child(child3))  # Should not be able to add a third child
         self.assertEqual(len(self.node.get_children()), 2)
+        return
 
     def test_add_child_max_parents(self):
         """Test that add_child does not add a child if it has max parents."""
@@ -163,6 +185,7 @@ class Test_Node(unittest.TestCase):
         self.assertFalse(parent3.add_child(child_node))
         self.assertFalse(parent4.add_child(child_node))
         self.assertEqual(len(child_node.get_parents()), 2)
+        return
 
     def test_get_children_r(self):
         """Test that get_children_r returns all recursive children."""
@@ -182,10 +205,12 @@ class Test_Node(unittest.TestCase):
         self.assertIn(grandchild1, recursive_children)
         self.assertIn(grandchild2, recursive_children)
         self.assertEqual(len(recursive_children), 4)
+        return
 
     def test_get_children_r_no_children(self):
         """Test that get_children_r returns an empty list when there are no children."""
         self.assertEqual(self.node.get_children_r(), [])
+        return
 
     def test_get_children_r_complex_graph(self):
         """Test get_children_r with a more complex graph structure."""
@@ -231,6 +256,7 @@ class Test_Node(unittest.TestCase):
         # Check results from node F (should be empty)
         children_of_f = node_f.get_children_r()
         self.assertEqual(len(children_of_f), 0)
+        return
         
         
 if __name__ == "__main__":

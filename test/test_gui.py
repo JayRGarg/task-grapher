@@ -24,6 +24,8 @@ class TestGui(unittest.TestCase):
              patch("tkinter.Canvas", return_value=self.canvas):
             self.node_tree = Node("Root Node")
             self.gui = Gui(self.node_tree) #create a Gui instance with the mock objects
+        return
+
 
     def test_gui_initialization(self):
         """Test that the Gui is initialized with the correct attributes."""
@@ -39,6 +41,7 @@ class TestGui(unittest.TestCase):
         self.assertEqual(self.gui._line_positions, {})
         self.assertEqual(self.gui._selected_nodes, set())
         self.assertEqual(self.gui._selected_child_line_ids, set())
+        return
 
     def test_add_node(self):
         """Test that the add_node method adds a node to the _id_to_node dictionary."""
@@ -48,6 +51,7 @@ class TestGui(unittest.TestCase):
         self.assertEqual(self.gui._id_to_node[new_node.get_id()], new_node)
         self.assertEqual(len(self.gui._id_to_node), 2)
         self.assertEqual(returned_node, new_node)
+        return
 
     def test_add_nodes(self):
         """Test that the add_nodes method adds all nodes in the tree."""
@@ -68,6 +72,7 @@ class TestGui(unittest.TestCase):
         self.assertIn(child2.get_id(), self.gui._id_to_node)
         self.assertIn(grandchild1.get_id(), self.gui._id_to_node)
         self.assertEqual(len(self.gui._id_to_node), 4)
+        return
 
     def test_draw_node(self):
         """Test that the draw_node method creates the correct canvas items and updates _node_positions."""
@@ -92,6 +97,7 @@ class TestGui(unittest.TestCase):
         self.assertEqual(stored_y, y)
         self.assertEqual(circle_id, self.canvas.create_oval.return_value)
         self.assertEqual(text_id, self.canvas.create_text.return_value)
+        return
 
     def test_draw_branch_and_child(self):
         """Test that draw_branch_and_child draws a line and a child node."""
@@ -128,6 +134,7 @@ class TestGui(unittest.TestCase):
         self.assertIn(line_id, self.gui._node_to_child_line_ids[parent_node])
         self.assertIn(child_node, self.gui._node_to_parent_line_ids)
         self.assertIn(line_id, self.gui._node_to_parent_line_ids[child_node])
+        return
 
     def test_distance_from_node(self):
         """Test that distance_from_node calculates the correct distance."""
@@ -137,6 +144,7 @@ class TestGui(unittest.TestCase):
         x, y = 120, 180
         expected_distance = ((x - x_node) ** 2 + (y - y_node) ** 2) ** 0.5
         self.assertAlmostEqual(self.gui.distance_from_node(x, y, node), expected_distance)
+        return
 
     def test_find_node_at(self):
         """Test that find_node_at returns the correct node or None."""
@@ -176,6 +184,7 @@ class TestGui(unittest.TestCase):
         self.canvas.find_closest.return_value = ()
         none_node = self.gui.find_node_at(x1,y1)
         self.assertIsNone(none_node)
+        return
 
     def test_select_child_line_ids(self):
         """Test that select_child_line_ids selects the correct line IDs."""
@@ -197,6 +206,30 @@ class TestGui(unittest.TestCase):
 
         # Assert that the line IDs are added to _selected_child_line_ids
         self.assertEqual(self.gui._selected_child_line_ids, {line_id1, line_id2})
+        return
+
+    def test_select_parent_line_ids(self):
+        """Test that select_child_line_ids selects the correct line IDs."""
+        parent_node = Node("Parent")
+        child1 = Node("Child 1")
+        child2 = Node("Child 2")
+        self.gui.add_node(parent_node)
+        self.gui.add_node(child1)
+        self.gui.add_node(child2)
+
+        line_id1 = 10
+        line_id2 = 20
+        self.gui._node_to_child_line_ids[parent_node] = {line_id1, line_id2}
+        self.gui._node_to_parent_line_ids[child1] = {line_id1}
+        self.gui._node_to_parent_line_ids[child2] = {line_id2}
+
+        # Select the parent node
+        self.gui._selected_parent_line_ids = set()
+        self.gui.select_parent_line_ids(child1)
+
+        # Assert that the line IDs are added to _selected_child_line_ids
+        self.assertEqual(self.gui._selected_parent_line_ids, {line_id1})
+        return
 
     def test_start_drag(self):
         """Test that start_drag starts the drag operation correctly."""
@@ -206,6 +239,7 @@ class TestGui(unittest.TestCase):
         self.gui.add_node(node2)
         self.gui.find_node_at = MagicMock(return_value=node1)  # Mock find_node_at
         self.gui.select_child_line_ids = MagicMock()
+        self.gui.select_parent_line_ids = MagicMock()
 
         event = MagicMock(x=100, y=150)
         self.gui.start_drag(event)
@@ -217,34 +251,43 @@ class TestGui(unittest.TestCase):
         self.assertEqual(self.gui._drag_start_x, 100)
         self.assertEqual(self.gui._drag_start_y, 150)
         self.gui.select_child_line_ids.assert_called_once()
+        self.gui.select_parent_line_ids.assert_called_once()
 
         # Test when no node is found
         self.gui.find_node_at.return_value = None
         self.gui._selected_nodes = set()  # Clear selected nodes
         self.gui.start_drag(event)
         self.assertEqual(self.gui._selected_nodes, set())  # No node should be selected
+        return
 
     def test_drag(self):
         """Test that the drag method moves the selected node and connected lines."""
+        node0 = Node("Node 0")
         node1 = Node("Node 1")
         node2 = Node("Node 2")
+        self.gui.add_node(node0)
         self.gui.add_node(node1)
         self.gui.add_node(node2)
 
+        x0, y0 = 0, 50
         x1, y1 = 100, 150
         x2, y2 = 200, 250
+
+        circle_id0, text_id0 = -1, 0
         circle_id1, text_id1 = 1, 2
         circle_id2, text_id2 = 3, 4
+        self.gui._node_positions[node0] = (x0, y0, circle_id0, text_id0)
         self.gui._node_positions[node1] = (x1, y1, circle_id1, text_id1)
         self.gui._node_positions[node2] = (x2, y2, circle_id2, text_id2)
+        line_id0 = -10
         line_id1 = 10
-        line_id2 = 20
+        self.gui._line_positions[line_id0] = (x0, y0, x1, y1)
         self.gui._line_positions[line_id1] = (x1, y1, x2, y2)
-        self.gui._line_positions[line_id2] = (x2, y2, x1, y1)
         self.gui._node_to_child_line_ids[node1] = {line_id1}
-        self.gui._node_to_parent_line_ids[node2] = {line_id1}
+        self.gui._node_to_parent_line_ids[node1] = {line_id0}
         self.gui._selected_nodes = {node1, node2}
-        self.gui._selected_child_line_ids = {line_id1, line_id2}#realistically wouldn't be adding line_id2, it's a random line
+        self.gui._selected_child_line_ids = {line_id1}#realistically wouldn't be adding line_id2, it's a random line
+        self.gui._selected_parent_line_ids = {line_id0}#realistically wouldn't be adding line_id2, it's a random line
 
         event = MagicMock(x=110, y=160)  # Move by 10 in x and y
         self.gui._drag_start_x = 100
@@ -252,6 +295,7 @@ class TestGui(unittest.TestCase):
         self.gui.drag(event)
 
         # Assert that the node positions are updated correctly
+        self.assertEqual(self.gui._node_positions[node0][:2], (x0, y0))
         self.assertEqual(self.gui._node_positions[node1][:2], (x1 + 10, y1 + 10))
         self.assertEqual(self.gui._node_positions[node2][:2], (x2 + 10, y2 + 10))
 
@@ -259,8 +303,8 @@ class TestGui(unittest.TestCase):
         self.canvas.coords.assert_called()
 
         # Assert that the line positions are updated correctly
+        self.assertEqual(self.gui._line_positions[line_id0], (x0, y0, x1 + 10, y1 + 10))
         self.assertEqual(self.gui._line_positions[line_id1], (x1 + 10, y1 + 10, x2 + 10, y2 + 10))
-        self.assertEqual(self.gui._line_positions[line_id2], (x2 + 10, y2 + 10, x1 + 10, y1 + 10))
 
         # Check the updated drag start
         self.assertEqual(self.gui._drag_start_x, 110)
@@ -269,13 +313,16 @@ class TestGui(unittest.TestCase):
         # Test when no nodes are selected
         self.gui._selected_nodes = set()
         self.gui.drag(event)  # Should not raise an error
+        return
 
     def test_stop_drag(self):
         """Test that stop_drag resets the drag state correctly."""
+        node0 = Node("Node 0")
         node1 = Node("Node 1")
         node2 = Node("Node 2")
         self.gui._selected_nodes = {node1, node2}
-        self.gui._selected_child_line_ids = {10, 20}
+        self.gui._selected_child_line_ids = {10}
+        self.gui._selected_parent_line_ids = {0}
         self.gui._drag_start_x = 100
         self.gui._drag_start_y = 150
 
@@ -283,17 +330,20 @@ class TestGui(unittest.TestCase):
 
         self.assertEqual(self.gui._selected_nodes, set())
         self.assertEqual(self.gui._selected_child_line_ids, set())
+        self.assertEqual(self.gui._selected_parent_line_ids, set())
         self.assertEqual(self.gui._drag_start_x, 0)
         self.assertEqual(self.gui._drag_start_y, 0)
 
         # Test when no nodes are selected
         self.gui.stop_drag(MagicMock()) # Should not raise errors
+        return
 
     def test_run(self):
         """Test that run calls the mainloop method of the Tkinter window."""
         self.gui._window.mainloop = MagicMock()  # Mock mainloop
         self.gui.run()
         self.gui._window.mainloop.assert_called_once()
+        return
 
 if __name__ == '__main__':
     unittest.main()
