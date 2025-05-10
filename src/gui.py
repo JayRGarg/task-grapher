@@ -22,11 +22,38 @@ class Gui:
         self._tree: Node = tree
         self._window: tk.Tk = tk.Tk()
         self._window.title("Task-Grapher")
-        self._canvas: tk.Canvas = tk.Canvas(self._window, width=WIDTH, height=HEIGHT, bg="white")
-        self._canvas.pack()
+
+        self._frame: tk.Frame = tk.Frame(self._window)
+        self._frame.pack(fill=tk.BOTH, expand=True)
+
+        self._h_scroll: tk.Scrollbar = tk.Scrollbar(self._frame, orient=tk.HORIZONTAL)
+        self._h_scroll.pack(side=tk.BOTTOM, fill=tk.X)
+
+        self._v_scroll: tk.Scrollbar = tk.Scrollbar(self._frame, orient=tk.VERTICAL)
+        self._v_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self._canvas = tk.Canvas(
+            self._frame,
+            width=WIDTH,
+            height=HEIGHT,
+            bg="white",
+            xscrollcommand=self._h_scroll.set,
+            yscrollcommand=self._v_scroll.set,
+            scrollregion=(0, 0, WIDTH * 2, HEIGHT * 2)
+        )
+        self._canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        self._h_scroll.config(command=self._canvas.xview)
+        self._v_scroll.config(command=self._canvas.yview)
+
+        #self._canvas: tk.Canvas = tk.Canvas(self._window, width=WIDTH, height=HEIGHT, bg="white")
+        #self._canvas.pack()
+
         self._scale_factor: float = 1.0
         self._drag_start_x: float = 0.0
         self._drag_start_y: float = 0.0
+        self._pan_start_x: float = 0.0
+        self._pan_start_y: float = 0.0
         self._id_to_node: dict[int, Node] = {}
         
         self._optimal_node_positions: dict[Node, tuple[float, float]] = {} #each tuple consists of (x, y)
@@ -41,6 +68,13 @@ class Gui:
         self._selected_parent_line_ids: set[int] = set()
 
         self.add_nodes()
+
+        self._canvas.bind("<KeyPress-s>", lambda e: self.pan_canvas(0, -50))
+        self._canvas.bind("<KeyPress-d>", lambda e: self.pan_canvas(-50, 0))
+        self._canvas.bind("<KeyPress-w>", lambda e: self.pan_canvas(0, 50))
+        self._canvas.bind("<KeyPress-a>", lambda e: self.pan_canvas(50, 0))
+        self._canvas.bind("<Button-3>", self.start_pan)
+        self._canvas.bind("<B3-Motion>", self.perform_pan)
 
         self._canvas.bind("<KeyPress-j>", self.zoom_in)
         self._canvas.bind("<KeyPress-k>", self.zoom_out)
@@ -61,6 +95,40 @@ class Gui:
             x, y = float(self._canvas.canvasx(event.x)), float(self._canvas.canvasy(event.y))
         logging.debug(f"Canvas Coords: {x}, {y}")
         return x, y
+
+    def pan_canvas(self, dx: float, dy: float) -> None:
+        # Move all canvas elements visually
+        self._canvas.move("all", dx, dy)
+
+        # Move node positions
+        for node, (x, y, cid, tid) in self._node_positions.items():
+            new_x = x + dx
+            new_y = y + dy
+            self._node_positions[node] = (new_x, new_y, cid, tid)
+
+        # Move line positions
+        for line_id, (x_p, y_p, x_c, y_c) in self._line_positions.items():
+            new_x_p = x_p + dx
+            new_y_p = y_p + dy
+            new_x_c = x_c + dx
+            new_y_c = y_c + dy
+            self._line_positions[line_id] = (new_x_p, new_y_p, new_x_c, new_y_c)
+
+    def start_pan(self, event: tk.Event) -> None:
+        self._canvas.focus_set()
+        self._pan_start_x = self._canvas.canvasx(event.x)
+        self._pan_start_y = self._canvas.canvasy(event.y)
+        return
+
+    def perform_pan(self, event: tk.Event) -> None:
+        new_x = self._canvas.canvasx(event.x)
+        new_y = self._canvas.canvasy(event.y)
+        dx = new_x - self._pan_start_x
+        dy = new_y - self._pan_start_y
+        self._pan_start_x = new_x
+        self._pan_start_y = new_y
+        self.pan_canvas(dx, dy)
+        return
 
     def zoom_in(self, event: tk.Event):
         x, y = self.event_to_canvas_coords(event)
@@ -89,6 +157,8 @@ class Gui:
             new_x_c = x + dx_c * factor
             new_y_c = y + dy_c * factor
             self._line_positions[line_id] = (new_x_p, new_y_p, new_x_c, new_y_c)
+        
+        return
 
     def zoom_out(self, event: tk.Event):
         x, y = self.event_to_canvas_coords(event)
@@ -117,6 +187,8 @@ class Gui:
             new_x_c = x + dx_c * factor
             new_y_c = y + dy_c * factor
             self._line_positions[line_id] = (new_x_p, new_y_p, new_x_c, new_y_c)
+        
+        return
 
     def add_nodes(self):
         visited: set[Node] = set()
