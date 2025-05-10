@@ -4,12 +4,12 @@ from collections import deque
 import logging
 import math
 
-NODE_RADIUS: int = 30#10
+NODE_RADIUS: float = 30.0#10
 # RADIAL_SPACING: int = 100  # Adjust as needed for spacing between levels
 # SPIRAL_FACTOR: float = 0.2  # Adjust to control the spiral effect
-WIDTH = 1000
-HEIGHT = 1000
-BASE_DISTANCE: int = 500  # Base distance from parent to first child
+WIDTH: int = 1000
+HEIGHT: int = 1000
+BASE_DISTANCE: float = 500  # Base distance from parent to first child
 DISTANCE_LEVEL_FACTOR: float = 0.55
 ANGLE_INCREMENT: float = 2 * math.pi / 5  # Base angle between siblings (adjust for branching)
 SPIRAL_FACTOR: float = 20#0.6  # Controls the spiral effect (angle offset per level)
@@ -23,13 +23,13 @@ class Gui:
         self._window.title("Task-Grapher")
         self._canvas: tk.Canvas = tk.Canvas(self._window, width=WIDTH, height=HEIGHT, bg="white")
         self._canvas.pack()
-        self._drag_start_x: int = 0
-        self._drag_start_y: int = 0
+        self._drag_start_x: float = 0.0
+        self._drag_start_y: float = 0.0
         self._id_to_node: dict[int, Node] = {}
         
-        self._optimal_node_positions: dict[Node, tuple[int, int]] = {} #each tuple consists of (x, y)
-        self._node_positions: dict[Node, tuple[int, int, int, int]] = {} #each tuple consists of (x, y, circle_id, text_id)
-        self._line_positions: dict[int, tuple[int, int, int, int]] = {} #each tuple consists of (xp, yp, xc, yc)
+        self._optimal_node_positions: dict[Node, tuple[float, float]] = {} #each tuple consists of (x, y)
+        self._node_positions: dict[Node, tuple[float, float, int, int]] = {} #each tuple consists of (x, y, circle_id, text_id)
+        self._line_positions: dict[int, tuple[float, float, float, float]] = {} #each tuple consists of (xp, yp, xc, yc)
 
         self._node_to_child_line_ids: dict[Node, set[int]] = {}
         self._node_to_parent_line_ids: dict[Node, set[int]] = {}
@@ -70,7 +70,7 @@ class Gui:
     def calculate_node_positions(self):
         """Calculates node positions with a parent-relative spiral effect."""
 
-        def calculate_child_positions(parent_node: Node, parent_x: int, parent_y: int, level: int, visited: set[Node], start_angle_offset: float = 0):
+        def calculate_child_positions(parent_node: Node, parent_x: float, parent_y: float, level: int, visited: set[Node], start_angle_offset: float = 0):
             num_children = len(parent_node.get_children())
             if num_children == 0:
                 return
@@ -102,8 +102,8 @@ class Gui:
             return
 
         # Position the root node
-        root_x = int(WIDTH/2)#200
-        root_y = int(HEIGHT/2)#200
+        root_x: float = WIDTH/2#200
+        root_y: float = HEIGHT/2#200
         _ = self.add_node(self._tree)
         self._optimal_node_positions[self._tree] = (root_x, root_y)
         visited_nodes: set[Node] = set()
@@ -135,11 +135,11 @@ class Gui:
                     self.draw_branch_and_child(canvas, parent, child, dx, dy)
         return
 
-    def draw_node(self, canvas: tk.Canvas, node: Node, x: int, y: int) -> None:
-        x1: int = x - NODE_RADIUS
-        y1: int = y - NODE_RADIUS
-        x2: int = x + NODE_RADIUS
-        y2: int = y + NODE_RADIUS
+    def draw_node(self, canvas: tk.Canvas, node: Node, x: float, y: float) -> None:
+        x1: float = x - NODE_RADIUS
+        y1: float = y - NODE_RADIUS
+        x2: float = x + NODE_RADIUS
+        y2: float = y + NODE_RADIUS
         circle_id: int = canvas.create_oval(x1, y1, x2, y2, fill="blue", outline="black", tags=(str(node.get_id()), "circle"))
         text_id: int = canvas.create_text(x, y, text=node.get_value(), fill="white", font=("Arial", 6), tags=(str(node.get_id()), "text"))
         self._node_positions[node] = (x, y, circle_id, text_id)
@@ -147,8 +147,10 @@ class Gui:
         logging.info("Drawing Node: %d", node.get_id())
         logging.debug("Position: %d,%d, Circle_Id: %d, Text_Id: %d", x, y, circle_id, text_id)
 
-    def draw_branch_and_child(self, canvas: tk.Canvas, parent_node: Node, child_node: Node, dx: int, dy: int) -> None:
+    def draw_branch_and_child(self, canvas: tk.Canvas, parent_node: Node, child_node: Node, dx: float, dy: float) -> None:
+        x_p: float; y_p: float
         x_p, y_p = self._node_positions[parent_node][:2]
+        x_c: float; y_c: float
         x_c, y_c = x_p + dx, y_p + dy
         self.draw_node(canvas, child_node, x_c, y_c)
         line_id:int = canvas.create_line(x_p, y_p, x_c, y_c, fill="red", width=1, tags=(str(parent_node.get_id()), "line"))#, dash=(5, 2))
@@ -171,12 +173,12 @@ class Gui:
         canvas.tag_lower("line", "circle")
 
 
-    def distance_from_node(self, x: int, y: int, node: Node):
-        x_node: int = self._node_positions[node][0]
-        y_node: int = self._node_positions[node][1]
+    def distance_from_node(self, x: float, y: float, node: Node):
+        x_node: float = self._node_positions[node][0]
+        y_node: float = self._node_positions[node][1]
         return math.sqrt((x-x_node)**2 + (y-y_node)**2)
 
-    def find_node_at(self, x: int, y: int) -> Node|None:
+    def find_node_at(self, x: float, y: float) -> Node|None:
         """Find the node under the given coordinates."""
         items: tuple[int, ...] = self._canvas.find_closest(x, y)
         if items:
@@ -236,22 +238,22 @@ class Gui:
         if len(self._selected_nodes) > 0:
             logging.info("Dragging")
             logging.debug("%d, %d",self._drag_start_x, self._drag_start_y)
-            dx: int = event.x - self._drag_start_x
-            dy: int = event.y - self._drag_start_y
+            dx: float = event.x - self._drag_start_x
+            dy: float = event.y - self._drag_start_y
             
             for selected_node in self._selected_nodes:
                 # Get the stored information for the selected node
                 if selected_node in self._node_positions:
-                    old_x: int; old_y: int; circle_id: int; text_id: int
+                    old_x: float; old_y: float; circle_id: int; text_id: int
                     old_x, old_y, circle_id, text_id = self._node_positions[selected_node]
 
                     # Calculate new coordinates
-                    new_x: int = old_x + dx
-                    new_y: int = old_y + dy
-                    x1: int = new_x - NODE_RADIUS
-                    y1: int = new_y - NODE_RADIUS
-                    x2: int = new_x + NODE_RADIUS
-                    y2: int = new_y + NODE_RADIUS
+                    new_x: float = old_x + dx
+                    new_y: float = old_y + dy
+                    x1: float = new_x - NODE_RADIUS
+                    y1: float = new_y - NODE_RADIUS
+                    x2: float = new_x + NODE_RADIUS
+                    y2: float = new_y + NODE_RADIUS
 
                     # Move the circle and the text
                     self._canvas.coords(circle_id, x1, y1, x2, y2)
@@ -260,7 +262,7 @@ class Gui:
                     # Update the stored position
                     self._node_positions[selected_node] = (new_x, new_y, circle_id, text_id)
 
-            x_p: int; y_p: int; x_c: int; y_c: int
+            x_p: float; y_p: float; x_c: float; y_c: float 
             # Child Lines
             for line_id in self._selected_child_line_ids:
                 if line_id in self._line_positions:
@@ -293,8 +295,8 @@ class Gui:
             self._selected_nodes.clear()
             self._selected_child_line_ids.clear()
             self._selected_parent_line_ids.clear()
-            self._drag_start_x = 0
-            self._drag_start_y = 0
+            self._drag_start_x = 0.0
+            self._drag_start_y = 0.0
         else:
             logging.info("No Nodes dragged")
 
