@@ -13,6 +13,7 @@ BASE_DISTANCE: float = 500  # Base distance from parent to first child
 DISTANCE_LEVEL_FACTOR: float = 0.55
 ANGLE_INCREMENT: float = 2 * math.pi / 5  # Base angle between siblings (adjust for branching)
 SPIRAL_FACTOR: float = 20#0.6  # Controls the spiral effect (angle offset per level)
+ZOOM_FACTOR: float = 1.1
 
 
 class Gui:
@@ -23,6 +24,7 @@ class Gui:
         self._window.title("Task-Grapher")
         self._canvas: tk.Canvas = tk.Canvas(self._window, width=WIDTH, height=HEIGHT, bg="white")
         self._canvas.pack()
+        self._scale_factor: float = 1.0
         self._drag_start_x: float = 0.0
         self._drag_start_y: float = 0.0
         self._id_to_node: dict[int, Node] = {}
@@ -40,9 +42,81 @@ class Gui:
 
         self.add_nodes()
 
+        self._canvas.bind("<KeyPress-j>", self.zoom_in)
+        self._canvas.bind("<KeyPress-k>", self.zoom_out)
         self._canvas.bind("<Button-1>", self.start_drag)
         self._canvas.bind("<B1-Motion>", self.drag)
         self._canvas.bind("<ButtonRelease-1>", self.stop_drag)
+
+        self._canvas.config(highlightthickness=1)
+        self._canvas.focus_set()
+
+    def event_to_canvas_coords(self, event: tk.Event) -> tuple[float, float]:
+        # Use canvas center if we don't have event coordinates
+        x: float
+        y: float
+        if event.x == 0 and event.y == 0:
+            x, y = self._canvas.winfo_width() / 2, self._canvas.winfo_height() / 2
+        else:
+            x, y = float(self._canvas.canvasx(event.x)), float(self._canvas.canvasy(event.y))
+        logging.debug(f"Canvas Coords: {x}, {y}")
+        return x, y
+
+    def zoom_in(self, event: tk.Event):
+        x, y = self.event_to_canvas_coords(event)
+        factor = ZOOM_FACTOR
+        #updating internal tracker of scale factor
+        self._scale_factor *= factor
+        #scale all objects
+        self._canvas.scale("all", x, y, factor, factor)
+
+        # Update node positions
+        for node, (nx, ny, cid, tid) in self._node_positions.items():
+            dx = nx - x
+            dy = ny - y
+            new_x = x + dx * factor
+            new_y = y + dy * factor
+            self._node_positions[node] = (new_x, new_y, cid, tid)
+
+        # Update line positions
+        for line_id, (x_p, y_p, x_c, y_c) in self._line_positions.items():
+            dx_p = x_p - x
+            dy_p = y_p - y
+            dx_c = x_c - x
+            dy_c = y_c - y
+            new_x_p = x + dx_p * factor
+            new_y_p = y + dy_p * factor
+            new_x_c = x + dx_c * factor
+            new_y_c = y + dy_c * factor
+            self._line_positions[line_id] = (new_x_p, new_y_p, new_x_c, new_y_c)
+
+    def zoom_out(self, event: tk.Event):
+        x, y = self.event_to_canvas_coords(event)
+        factor = 1 / ZOOM_FACTOR
+        #updating internal tracker of scale factor
+        self._scale_factor *= factor
+        #scale all objects
+        self._canvas.scale("all", x, y, factor, factor)
+
+        # Update node positions
+        for node, (nx, ny, cid, tid) in self._node_positions.items():
+            dx = nx - x
+            dy = ny - y
+            new_x = x + dx * factor
+            new_y = y + dy * factor
+            self._node_positions[node] = (new_x, new_y, cid, tid)
+
+        # Update line positions
+        for line_id, (x_p, y_p, x_c, y_c) in self._line_positions.items():
+            dx_p = x_p - x
+            dy_p = y_p - y
+            dx_c = x_c - x
+            dy_c = y_c - y
+            new_x_p = x + dx_p * factor
+            new_y_p = y + dy_p * factor
+            new_x_c = x + dx_c * factor
+            new_y_c = y + dy_c * factor
+            self._line_positions[line_id] = (new_x_p, new_y_p, new_x_c, new_y_c)
 
     def add_nodes(self):
         visited: set[Node] = set()
@@ -179,7 +253,7 @@ class Gui:
         return math.sqrt((x-x_node)**2 + (y-y_node)**2)
 
     def find_node_at(self, x: float, y: float) -> Node|None:
-        """Find the node under the given coordinates."""
+        """Find the node under the given canvas coordinates."""
         items: tuple[int, ...] = self._canvas.find_closest(x, y)
         if items:
             # The tags of the circle and text are the node object itself
@@ -190,7 +264,7 @@ class Gui:
                 for tag in tags:
                     if tag.isdigit() and int(tag) in self._id_to_node and isinstance(self._id_to_node[int(tag)], Node):
                         node = self._id_to_node[int(tag)]
-                        if self.distance_from_node(x, y, node) <= NODE_RADIUS:
+                        if self.distance_from_node(x, y, node) <= NODE_RADIUS * self._scale_factor:
                             return node
         return None
 
@@ -215,7 +289,10 @@ class Gui:
 
     def start_drag(self, event: tk.Event) -> None:
         """Start the drag operation."""
-        selected_node: Node|None = self.find_node_at(event.x, event.y)
+        #focus to canvas window for keypresses after mouse click
+        self._canvas.focus_set()
+        x, y = self.event_to_canvas_coords(event)
+        selected_node: Node|None = self.find_node_at(x, y)
         if selected_node:
             logging.info("Starting drag")
             logging.debug("Selected Node value: %s", selected_node.get_value())
@@ -228,8 +305,8 @@ class Gui:
             self.select_parent_line_ids(selected_node)
             logging.debug("selected child line ids: %s", str(self._selected_child_line_ids))
             
-            self._drag_start_x = event.x
-            self._drag_start_y = event.y
+            self._drag_start_x = x
+            self._drag_start_y = y
         else:
             logging.info("No Nodes to drag")
 
@@ -238,8 +315,9 @@ class Gui:
         if len(self._selected_nodes) > 0:
             logging.info("Dragging")
             logging.debug("%d, %d",self._drag_start_x, self._drag_start_y)
-            dx: float = event.x - self._drag_start_x
-            dy: float = event.y - self._drag_start_y
+            x, y = self.event_to_canvas_coords(event)
+            dx: float = x - self._drag_start_x
+            dy: float = y - self._drag_start_y
             
             for selected_node in self._selected_nodes:
                 # Get the stored information for the selected node
@@ -256,8 +334,11 @@ class Gui:
                     y2: float = new_y + NODE_RADIUS
 
                     # Move the circle and the text
-                    self._canvas.coords(circle_id, x1, y1, x2, y2)
-                    self._canvas.coords(text_id, new_x, new_y)
+                    #self._canvas.coords(circle_id, x1, y1, x2, y2)
+                    #self._canvas.coords(text_id, new_x, new_y)
+                    self._canvas.move(circle_id, dx, dy)
+                    self._canvas.move(text_id, dx, dy)
+                    #could use self._canvas.move instead
 
                     # Update the stored position
                     self._node_positions[selected_node] = (new_x, new_y, circle_id, text_id)
@@ -271,7 +352,8 @@ class Gui:
                     y_p += dy
                     x_c += dx
                     y_c += dy
-                    self._canvas.coords(line_id, x_p, y_p, x_c, y_c)
+                    #self._canvas.coords(line_id, x_p, y_p, x_c, y_c)
+                    self._canvas.move(line_id, dx, dy)
                     self._line_positions[line_id] = (x_p, y_p, x_c, y_c)
             # Parent Lines
             for line_id in self._selected_parent_line_ids:
@@ -283,8 +365,8 @@ class Gui:
                     self._line_positions[line_id] = (x_p, y_p, x_c, y_c)
 
             # Update drag start position for the next drag event
-            self._drag_start_x = event.x
-            self._drag_start_y = event.y
+            self._drag_start_x = x
+            self._drag_start_y = y
         else:
             logging.info("No Nodes dragging")
 
