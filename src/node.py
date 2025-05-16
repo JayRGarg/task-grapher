@@ -23,7 +23,7 @@ class Node:
         self._completed: bool = False
 
         self._children: list[Self] = []
-        self._siblings: list[Self] = []
+        #self._siblings: list[Self] = []
         self._parents: list[Self] = []
         self._max_children: int = 4
         self._max_parents: int = 4
@@ -90,4 +90,22 @@ class Node:
                     stack.append(child)
 
         return list(visited)
+
+    def remove_from_tree(self) -> None:
+        """
+        Removes this node from its parents' children lists and clears references
+        to and from its children.
+        """
+        # 1. Remove from parents
+        for parent in list(self._parents):
+            if self in parent._children:
+                parent._children.remove(self)
+        self._parents = []
+
+        # 2. Clear references to children and remove parent reference from children
+        for child in list(self._children):  # Iterate over a copy
+            if self in child._parents:
+                child._parents.remove(self)
+        self._children = []
+        return
 

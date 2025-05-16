@@ -43,6 +43,8 @@ class Gui:
         )
         self._canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
+        self.create_context_menu()
+
         self._h_scroll.config(command=self._canvas.xview)
         self._v_scroll.config(command=self._canvas.yview)
 
@@ -62,10 +64,12 @@ class Gui:
 
         self._node_to_child_line_ids: dict[Node, set[int]] = {}
         self._node_to_parent_line_ids: dict[Node, set[int]] = {}
+        self._line_ids_to_nodes: dict[int, tuple[Node, Node]] = {} #line_id to tuple of (parent_node, child_node)
 
         self._selected_nodes: set[Node] = set()
         self._selected_child_line_ids: set[int] = set()
         self._selected_parent_line_ids: set[int] = set()
+        self._selected_node: Node|None = None
 
         self.add_nodes()
 
@@ -73,8 +77,8 @@ class Gui:
         self._canvas.bind("<KeyPress-d>", lambda e: self.pan_canvas(-50, 0))
         self._canvas.bind("<KeyPress-w>", lambda e: self.pan_canvas(0, 50))
         self._canvas.bind("<KeyPress-a>", lambda e: self.pan_canvas(50, 0))
-        self._canvas.bind("<Button-3>", self.start_pan)
-        self._canvas.bind("<B3-Motion>", self.perform_pan)
+        self._canvas.bind("<Button-2>", self.start_pan)
+        self._canvas.bind("<B2-Motion>", self.perform_pan)
 
         self._canvas.bind("<KeyPress-j>", self.zoom_in)
         self._canvas.bind("<KeyPress-k>", self.zoom_out)
@@ -84,6 +88,64 @@ class Gui:
 
         self._canvas.config(highlightthickness=1)
         self._canvas.focus_set()
+    
+    def create_context_menu(self):
+        self.context_menu: tk.Menu = tk.Menu(self._window, tearoff=0)
+        self.context_menu.add_command(label="Delete Singular Node", command=self.handle_delete_single_node)
+        return
+
+    def show_context_menu(self, event: tk.Event, node: Node):
+        self._selected_node = node  # store reference for deletion or other ops
+        self.context_menu.tk_popup(event.x_root, event.y_root)
+        return
+
+    def handle_delete_single_node(self):
+        if self._selected_node:
+            self.delete_node_from_canvas(self._selected_node)
+            self._selected_node = None
+        return
+
+    def delete_node_from_canvas(self, node: Node) -> None:
+        """Deletes Node and Surrounding Lines if in Tree"""
+
+        #remove reference of line from each parent
+        if node in self._node_to_parent_line_ids:
+            for l_id in self._node_to_parent_line_ids[node]:
+                p: Node = self._line_ids_to_nodes[l_id][0]
+                #if l_id in self._node_to_child_line_ids[p]:
+                self._node_to_child_line_ids[p].remove(l_id) #remove reference of line from parent
+                del self._line_ids_to_nodes[l_id] #remove reference of line from map
+                del self._line_positions[l_id]
+                self._canvas.delete(l_id)
+            #self._node_to_parent_line_ids[node].clear() #remove reference of all parent lines from node
+            del self._node_to_parent_line_ids[node]
+            
+        #remove reference of line from each child
+        if node in self._node_to_child_line_ids:
+            for l_id in self._node_to_child_line_ids[node]:
+                c: Node = self._line_ids_to_nodes[l_id][1]
+                #if l_id in self._node_to_parent_line_ids[c]:
+                self._node_to_parent_line_ids[c].remove(l_id) #remove reference of line from child
+                del self._line_ids_to_nodes[l_id] #remove reference of line from map
+                del self._line_positions[l_id]
+                self._canvas.delete(l_id)
+            #self._node_to_child_line_ids[node].clear() #remove reference of all child lines from node
+            del self._node_to_child_line_ids[node]
+
+        _, _, c_id, t_id = self._node_positions[node]
+        self._canvas.tag_unbind(c_id, "<Button-3>")
+        self._canvas.delete(c_id)
+        self._canvas.delete(t_id)
+        del self._node_positions[node]
+
+        if node in self._optimal_node_positions:
+            del self._optimal_node_positions[node]
+        
+        del self._id_to_node[node.get_id()]
+
+        #node.remove_from_tree()
+        #del node
+        return
 
     def event_to_canvas_coords(self, event: tk.Event) -> tuple[float, float]:
         # Use canvas center if we don't have event coordinates
@@ -289,6 +351,7 @@ class Gui:
         circle_id: int = canvas.create_oval(x1, y1, x2, y2, fill="blue", outline="black", tags=(str(node.get_id()), "circle"))
         text_id: int = canvas.create_text(x, y, text=node.get_value(), fill="white", font=("Arial", 6), tags=(str(node.get_id()), "text"))
         self._node_positions[node] = (x, y, circle_id, text_id)
+        self._canvas.tag_bind(circle_id, "<Button-3>", lambda event, n=node: self.show_context_menu(event, n))
 
         logging.info("Drawing Node: %d", node.get_id())
         logging.debug("Position: %d,%d, Circle_Id: %d, Text_Id: %d", x, y, circle_id, text_id)
@@ -300,6 +363,8 @@ class Gui:
         x_c, y_c = x_p + dx, y_p + dy
         self.draw_node(canvas, child_node, x_c, y_c)
         line_id:int = canvas.create_line(x_p, y_p, x_c, y_c, fill="red", width=1, tags=(str(parent_node.get_id()), "line"))#, dash=(5, 2))
+        
+        self._line_ids_to_nodes[line_id] = (parent_node, child_node)
 
         if parent_node in self._node_to_child_line_ids:
             self._node_to_child_line_ids[parent_node].add(line_id)

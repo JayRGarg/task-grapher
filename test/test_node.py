@@ -257,7 +257,89 @@ class Test_Node(unittest.TestCase):
         children_of_f = node_f.get_children_r()
         self.assertEqual(len(children_of_f), 0)
         return
-        
+       
+
+    def test_remove_from_tree_no_parents_no_children(self):
+        """Test remove_from_tree on a node with no parents and no children."""
+        self.node.remove_from_tree()
+        self.assertEqual(self.node.get_parents(), [])
+        self.assertEqual(self.node.get_children(), [])
+        return
+
+    def test_remove_from_tree_with_parent(self):
+        """Test remove_from_tree on a node with a parent."""
+        parent_node = Node("Parent")
+        parent_node.add_child(self.node)
+
+        self.node.remove_from_tree()
+
+        self.assertEqual(self.node.get_parents(), [])
+        self.assertEqual(parent_node.get_children(), [])
+        return
+
+    def test_remove_from_tree_with_children(self):
+        """Test remove_from_tree on a node with children."""
+        child1 = Node("Child 1")
+        child2 = Node("Child 2")
+        self.node.add_child(child1)
+        self.node.add_child(child2)
+
+        self.node.remove_from_tree()
+
+        self.assertEqual(self.node.get_children(), [])
+        self.assertEqual(child1.get_parents(), [])
+        self.assertEqual(child2.get_parents(), [])
+        return
+
+    def test_remove_from_tree_with_parent_and_children(self):
+        """Test remove_from_tree on a node with a parent and children."""
+        parent_node = Node("Parent")
+        child1 = Node("Child 1")
+        child2 = Node("Child 2")
+
+        parent_node.add_child(self.node)
+        self.node.add_child(child1)
+        self.node.add_child(child2)
+
+        self.node.remove_from_tree()
+
+        self.assertEqual(self.node.get_parents(), [])
+        self.assertEqual(self.node.get_children(), [])
+        self.assertEqual(parent_node.get_children(), [])
+        self.assertEqual(child1.get_parents(), [])
+        self.assertEqual(child2.get_parents(), [])
+        return
+
+    def test_remove_from_tree_multiple_parents(self):
+        """Test remove_from_tree on a node with multiple parents."""
+        parent1 = Node("Parent 1")
+        parent2 = Node("Parent 2")
+        parent1.add_child(self.node)
+        parent2.add_child(self.node)
+
+        self.node.remove_from_tree()
+
+        self.assertEqual(self.node.get_parents(), [])
+        self.assertEqual(parent1.get_children(), [])
+        self.assertEqual(parent2.get_children(), [])
+        return
+
+    def test_remove_from_tree_grandparent_grandchild(self):
+        """Test that removing an intermediate node correctly detaches the subtree."""
+        grandparent = Node("Grandparent")
+        parent = Node("Parent")
+        child = Node("Child")
+
+        grandparent.add_child(parent)
+        parent.add_child(child)
+
+        parent.remove_from_tree()
+
+        self.assertEqual(parent.get_parents(), [])
+        self.assertEqual(parent.get_children(), [])
+        self.assertNotIn(parent, grandparent.get_children())
+        self.assertEqual(child.get_parents(), []) # Child should also have its parent link broken
+        return
         
 if __name__ == "__main__":
     _ = unittest.main()

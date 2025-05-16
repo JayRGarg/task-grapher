@@ -242,6 +242,12 @@ class TestGui(unittest.TestCase):
         self.gui.select_parent_line_ids = MagicMock()
 
         event = MagicMock(x=100, y=150)
+
+        def coord_effect(event):
+            return event.x, event.y
+        self.gui.event_to_canvas_coords = MagicMock()
+        self.gui.event_to_canvas_coords.side_effect = coord_effect
+
         self.gui.start_drag(event)
 
         # Assert that find_node_at was called
@@ -290,6 +296,10 @@ class TestGui(unittest.TestCase):
         self.gui._selected_parent_line_ids = {line_id0}#realistically wouldn't be adding line_id2, it's a random line
 
         event = MagicMock(x=110, y=160)  # Move by 10 in x and y
+        def coord_effect(event):
+            return event.x, event.y
+        self.gui.event_to_canvas_coords = MagicMock()
+        self.gui.event_to_canvas_coords.side_effect = coord_effect
         self.gui._drag_start_x = 100
         self.gui._drag_start_y = 150
         self.gui.drag(event)
