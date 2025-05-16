@@ -26,8 +26,8 @@ def main():
     graphics.run()
 
     return
-"""
 
+"""
 def main():
 
     logging.basicConfig(level=logging.DEBUG)

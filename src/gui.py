@@ -1,9 +1,12 @@
 import tkinter as tk
 from tkinter import simpledialog
+from tkinter import filedialog
 from src.node import Node
 from collections import deque
 import logging
 import math
+import pickle
+
 
 NODE_RADIUS: float = 30.0#10
 # RADIAL_SPACING: int = 100  # Adjust as needed for spacing between levels
@@ -45,6 +48,7 @@ class Gui:
         self._canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         self.create_context_menu()
+        self.create_canvas_context_menu()
 
         self._h_scroll.config(command=self._canvas.xview)
         self._v_scroll.config(command=self._canvas.yview)
@@ -87,9 +91,76 @@ class Gui:
         self._canvas.bind("<B1-Motion>", self.drag)
         self._canvas.bind("<ButtonRelease-1>", self.stop_drag)
 
+        self._canvas.bind("<Button-3>", self.handle_canvas_right_click)
+
         self._canvas.config(highlightthickness=1)
         self._canvas.focus_set()
+
+        return
+
+    def rebuild_canvas_from_tree(self, root_node: Node):
+        self._canvas.delete("all")
+        self._id_to_node = {}
+        self._optimal_node_positions = {} #each tuple consists of (x, y)
+        self._node_positions = {} #each tuple consists of (x, y, circle_id, text_id)
+        self._line_positions = {} #each tuple consists of (xp, yp, xc, yc)
+        self._node_to_child_line_ids = {}
+        self._node_to_parent_line_ids = {}
+        self._line_ids_to_nodes = {} #line_id to tuple of (parent_node, child_node)
+        self._selected_nodes = set()
+        self._selected_child_line_ids = set()
+        self._selected_parent_line_ids = set()
+        self._selected_node = None
+
+        self._tree = root_node
+        self.calculate_node_positions()
+        self.draw_tree(self._canvas)
     
+    def handle_canvas_right_click(self, event: tk.Event):
+        clicked_items = self._canvas.find_overlapping(event.x, event.y, event.x, event.y)
+        circle_ids = [self._node_positions[n][2] for n in self._node_positions.keys()]
+        is_node = any(item in circle_ids for item in clicked_items)
+        if not is_node:
+            self._canvas_menu.post(event.x_root, event.y_root)
+        return
+
+    def create_canvas_context_menu(self):
+        self._canvas_menu: tk.Menu = tk.Menu(self._window, tearoff=0)
+        self._canvas_menu.add_command(label="Save Tree", command=self.save_tree_to_file)
+        self._canvas_menu.add_command(label="Load Tree", command=self.load_tree_from_file)
+        return
+
+    def save_tree_to_file(self):
+        if not self._tree:
+            print("No tree to save.")
+            return
+
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".pkl",
+            filetypes=[("Pickle Files", "*.pkl"), ("All Files", "*.*")]
+        )
+        if file_path:
+            with open(file_path, "wb") as f:
+                pickle.dump(self._tree, f)
+            print(f"Tree saved to {file_path}")
+        else:
+            print(f"file path does not exist: {file_path}")
+        return
+
+    def load_tree_from_file(self):
+        file_path = filedialog.askopenfilename(
+            defaultextension=".pkl",
+            filetypes=[("Pickle Files", "*.pkl"), ("All Files", "*.*")]
+        )
+        if file_path:
+            with open(file_path, "rb") as f:
+                self._tree = pickle.load(f)
+
+            print(f"Tree loaded from {file_path}")
+            self.rebuild_canvas_from_tree(self._tree)
+        else:
+            print(f"file path does not exist: {file_path}")
+
     def create_context_menu(self):
         self.context_menu: tk.Menu = tk.Menu(self._window, tearoff=0)
         #self.context_menu.add_command(label="Delete Singular Node", command=self.handle_delete_single_node)
