@@ -1,4 +1,5 @@
 import tkinter as tk
+from tkinter import simpledialog
 from src.node import Node
 from collections import deque
 import logging
@@ -92,6 +93,7 @@ class Gui:
     def create_context_menu(self):
         self.context_menu: tk.Menu = tk.Menu(self._window, tearoff=0)
         #self.context_menu.add_command(label="Delete Singular Node", command=self.handle_delete_single_node)
+        self.context_menu.add_command(label="Add Child", command=self.prompt_add_child)
         self.context_menu.add_command(label="Delete Node and Descendants", command=self.handle_delete_node_and_descendants)
         return
 
@@ -99,6 +101,17 @@ class Gui:
         self._selected_node = node  # store reference for deletion or other ops
         self.context_menu.tk_popup(event.x_root, event.y_root)
         return
+
+    def prompt_add_child(self):
+        if self._selected_node:
+            value = simpledialog.askstring("New Task", "Enter name for the new task:")
+            if value is not None:
+                child = Node(value)
+                added = self._selected_node.add_child(child)
+                if added:
+                    _ = self.add_node(child)
+                    self.draw_branch_and_child(self._canvas, self._selected_node, child, 0, 100)
+            self._selected_node = None
 
     def handle_delete_single_node(self):
         if self._selected_node:
