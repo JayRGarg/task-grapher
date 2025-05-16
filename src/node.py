@@ -2,6 +2,7 @@ from datetime import datetime, date, time
 from typing import Self, Iterator
 import itertools
 from collections import deque
+import logging
 
 class Node:
 
@@ -60,6 +61,7 @@ class Node:
         return self._due_time
 
     def get_children(self) -> list[Self]:
+        logging.debug(print([c._value for c in self._children]))
         return self._children
 
     def get_parents(self) -> list[Self]:

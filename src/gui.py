@@ -91,7 +91,8 @@ class Gui:
     
     def create_context_menu(self):
         self.context_menu: tk.Menu = tk.Menu(self._window, tearoff=0)
-        self.context_menu.add_command(label="Delete Singular Node", command=self.handle_delete_single_node)
+        #self.context_menu.add_command(label="Delete Singular Node", command=self.handle_delete_single_node)
+        self.context_menu.add_command(label="Delete Node and Descendants", command=self.handle_delete_node_and_descendants)
         return
 
     def show_context_menu(self, event: tk.Event, node: Node):
@@ -105,8 +106,28 @@ class Gui:
             self._selected_node = None
         return
 
+    def handle_delete_node_and_descendants(self):
+        if self._selected_node:
+            self.delete_node_and_descendants(self._selected_node)
+            self._selected_node = None
+        return
+
+    def delete_node_and_descendants(self, n: Node) -> None:
+        """Deletes Node and Descendants from Canvas and Tree"""
+
+        def recursive_remove(node: Node) -> None:
+            children_lst_copy = node.get_children().copy()
+            for child in children_lst_copy:
+                recursive_remove(child)
+            self.delete_node_from_canvas(node)
+            node.remove_from_tree()
+            return
+
+        recursive_remove(n)
+        return
+
     def delete_node_from_canvas(self, node: Node) -> None:
-        """Deletes Node and Surrounding Lines if in Tree"""
+        """Deletes Node and Surrounding Lines from Canvas"""
 
         #remove reference of line from each parent
         if node in self._node_to_parent_line_ids:
